@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Office Ledger — Team Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="stamp">TEAM</div>
+      <h1>Office Ledger</h1>
+      <p class="tagline">shared desk calendar</p>
+    </div>
+
+    <nav class="view-tabs" aria-label="Calendar views">
+      <button class="tab active" data-view="month">
+        <span class="tab-index">01</span> Monthly
+      </button>
+      <button class="tab" data-view="week">
+        <span class="tab-index">02</span> Weekly
+      </button>
+      <button class="tab" data-view="day">
+        <span class="tab-index">03</span> Daily
+      </button>
+    </nav>
+
+    <button class="new-entry-btn" id="newEventBtn">+ New Entry</button>
+
+    <div class="mini-nav">
+      <button id="prevBtn" aria-label="Previous">&larr;</button>
+      <div id="currentLabel" class="current-label">—</div>
+      <button id="nextBtn" aria-label="Next">&rarr;</button>
+    </div>
+    <button class="today-btn" id="todayBtn">Jump to today</button>
+
+    <div class="legend-panel">
+      <div class="legend-head">
+        <span class="tab-index">04</span> Legend
+      </div>
+      <ul id="legendList" class="legend-list">
+        <li class="legend-empty">No categories defined yet — colors will list here as entries are added.</li>
+      </ul>
+    </div>
+
+    <div class="sidebar-foot">
+      <label for="authorName">Signed as</label>
+      <input type="text" id="authorName" placeholder="Your name" autocomplete="off">
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+    <div class="connection-banner" id="connectionBanner" hidden>
+      Connecting to shared calendar…
+    </div>
+
+    <section class="view" id="monthView">
+      <div class="weekday-row" id="monthWeekdayRow"></div>
+      <div class="month-grid" id="monthGrid"></div>
+    </section>
+
+    <section class="view" id="weekView" hidden>
+      <div class="week-grid" id="weekGrid"></div>
+    </section>
+
+    <section class="view" id="dayView" hidden>
+      <div class="day-grid" id="dayGrid"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== NEW / EDIT ENTRY MODAL ===== -->
+<div class="modal-backdrop" id="modalBackdrop" hidden>
+  <form class="modal" id="eventForm">
+    <div class="modal-head">
+      <span class="tab-index">05</span>
+      <h2 id="modalTitle">New Entry</h2>
+      <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+    </div>
+
+    <input type="hidden" id="eventId">
+
+    <label class="field">
+      <span>Title</span>
+      <input type="text" id="eventTitle" required placeholder="e.g. Client call, Leave, Deadline">
+    </label>
+
+    <div class="field-row">
+      <label class="field">
+        <span>Date</span>
+        <input type="date" id="eventDate" required>
+      </label>
+    </div>
+
+    <label class="field">
+      <span>People</span>
+      <textarea id="eventPeople" rows="3" placeholder="Type a name, press Enter for the next person"></textarea>
+    </label>
+
+    <label class="field">
+      <span>Category</span>
+      <div class="category-select-row">
+        <select id="eventCategory" required>
+          <option value="" disabled selected>Select a category…</option>
+        </select>
+        <span class="category-color-dot" id="categoryColorDot"></span>
+      </div>
+    </label>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="deleteBtn" hidden>Delete entry</button>
+      <div class="modal-actions-right">
+        <button type="button" class="btn-ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn-primary">Save entry</button>
+      </div>
+    </div>
+    <p class="modal-error" id="modalError" hidden></p>
+  </form>
+</div>
+
+<!-- Firebase (compat build — no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
