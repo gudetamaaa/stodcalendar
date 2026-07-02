@@ -329,32 +329,58 @@ function renderWeek() {
   const days = Array.from({length:7}, (_,i) => addDays(start, i));
   const today = startOfDay(new Date());
 
-  el.weekGrid.innerHTML = '';
-  days.forEach(d => {
-    const col = document.createElement('div');
-    col.className = 'week-col' + (isSameDay(d, today) ? ' is-today-col' : '');
+  const dayIndexMap = new Map();
+  days.forEach((d,i) => dayIndexMap.set(toDateKey(d), i));
 
+  // Same bar-segment approach as month view, but everything lives in one
+  // row since a week view has no row-wrapping.
+  const segments = [];
+  state.events.forEach(ev => {
+    const dates = eventDates(ev).slice().sort();
+    if (dates.length === 0) return;
+    groupConsecutiveDates(dates).forEach(run => {
+      const indices = run.map(d => dayIndexMap.get(d)).filter(i => i !== undefined).sort((a,b)=>a-b);
+      if (indices.length === 0) return;
+      const colStart = indices[0];
+      const colSpan = indices[indices.length-1] - indices[0] + 1;
+      segments.push({ colStart, colSpan, event: ev });
+    });
+  });
+  const laneCount = Math.max(assignLanes(segments), 1);
+
+  el.weekGrid.innerHTML = '';
+  el.weekGrid.style.gridTemplateRows = `auto repeat(${laneCount}, 44px)`;
+
+  days.forEach((d, col) => {
     const header = document.createElement('div');
     header.className = 'col-header' + (isSameDay(d, today) ? ' is-today' : '');
+    header.style.gridColumn = `${col+1} / span 1`;
+    header.style.gridRow = '1';
     header.innerHTML = `<div class="wd">${WEEKDAYS_SHORT[d.getDay()]}</div><div class="dn">${d.getDate()}</div>`;
-    col.appendChild(header);
+    el.weekGrid.appendChild(header);
+  });
 
-    const list = document.createElement('div');
-    list.className = 'col-events';
-    const dayEvents = eventsOnDate(d);
-    if (dayEvents.length === 0) {
-      list.innerHTML = '<div class="col-empty">No entries</div>';
-    } else {
-      dayEvents.forEach(ev => list.appendChild(makeEntryCard(ev)));
-    }
-    col.appendChild(list);
+  days.forEach((d, col) => {
+    const bg = document.createElement('div');
+    bg.className = 'week-daybg' + (isSameDay(d, today) ? ' is-today-col' : '');
+    bg.style.gridColumn = `${col+1} / span 1`;
+    bg.style.gridRow = `2 / -1`;
+    bg.addEventListener('click', () => openModal(null, d));
+    el.weekGrid.appendChild(bg);
+  });
 
-    col.addEventListener('click', (e) => {
-      if (e.target.closest('.entry-card')) return;
-      openModal(null, d);
-    });
-
-    el.weekGrid.appendChild(col);
+  segments.forEach(seg => {
+    const bar = document.createElement('div');
+    bar.className = 'week-bar';
+    bar.style.gridColumn = `${seg.colStart+1} / span ${seg.colSpan}`;
+    bar.style.gridRow = `${seg.lane + 2}`;
+    bar.style.background = seg.event.color || categoryColor(seg.event.category);
+    const people = formatPeople(seg.event.people);
+    bar.innerHTML = `<div class="wb-title">${escapeHtml(seg.event.title)}</div>
+      <div class="wb-meta">${escapeHtml(categoryLabel(seg.event.category))}${people ? ' · ' + escapeHtml(people) : ''}</div>`;
+    bar.title = pillTooltip(seg.event);
+    bar.addEventListener('click', (e) => { e.stopPropagation(); openModal(seg.event); });
+    el.weekGrid.appendChild(bar);
   });
 }
 
