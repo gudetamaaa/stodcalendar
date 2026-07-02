@@ -346,10 +346,10 @@ function renderWeek() {
       segments.push({ colStart, colSpan, event: ev });
     });
   });
-  const laneCount = Math.max(assignLanes(segments), 1);
+  const laneCount = Math.max(assignLanes(segments), 6);
 
   el.weekGrid.innerHTML = '';
-  el.weekGrid.style.gridTemplateRows = `auto repeat(${laneCount}, 44px)`;
+  el.weekGrid.style.gridTemplateRows = `auto repeat(${laneCount}, 22px)`;
 
   days.forEach((d, col) => {
     const header = document.createElement('div');
@@ -375,9 +375,7 @@ function renderWeek() {
     bar.style.gridColumn = `${seg.colStart+1} / span ${seg.colSpan}`;
     bar.style.gridRow = `${seg.lane + 2}`;
     bar.style.background = seg.event.color || categoryColor(seg.event.category);
-    const people = formatPeople(seg.event.people);
-    bar.innerHTML = `<div class="wb-title">${escapeHtml(seg.event.title)}</div>
-      <div class="wb-meta">${escapeHtml(categoryLabel(seg.event.category))}${people ? ' · ' + escapeHtml(people) : ''}</div>`;
+    bar.textContent = seg.event.title;
     bar.title = pillTooltip(seg.event);
     bar.addEventListener('click', (e) => { e.stopPropagation(); openModal(seg.event); });
     el.weekGrid.appendChild(bar);
