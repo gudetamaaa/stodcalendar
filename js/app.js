@@ -187,43 +187,123 @@ function renderMonth() {
   const firstOfMonth = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1);
   const gridStart = addDays(firstOfMonth, -firstOfMonth.getDay());
   const today = startOfDay(new Date());
+  const days = Array.from({length:42}, (_,i) => addDays(gridStart, i));
+
+  const dayIndexMap = new Map();
+  days.forEach((d,i) => dayIndexMap.set(toDateKey(d), i));
+
+  // Turn each event's dates into contiguous-run "bar" segments, split at
+  // week-row boundaries so each segment can be drawn as one continuous
+  // strip within a single grid row.
+  const segmentsByRow = Array.from({length:6}, () => []);
+  state.events.forEach(ev => {
+    const dates = eventDates(ev).slice().sort();
+    if (dates.length === 0) return;
+    groupConsecutiveDates(dates).forEach(run => {
+      const indices = run.map(d => dayIndexMap.get(d)).filter(i => i !== undefined).sort((a,b)=>a-b);
+      if (indices.length === 0) return;
+      let segStart = indices[0];
+      for (let i = 1; i <= indices.length; i++) {
+        const isLast = i === indices.length;
+        const prevIdx = indices[i-1];
+        const curIdx = isLast ? null : indices[i];
+        const continues = !isLast && curIdx === prevIdx + 1 && Math.floor(curIdx/7) === Math.floor(prevIdx/7);
+        if (!continues) {
+          const row = Math.floor(segStart/7);
+          const colStart = segStart % 7;
+          const colSpan = (prevIdx % 7) - colStart + 1;
+          segmentsByRow[row].push({ colStart, colSpan, event: ev });
+          segStart = curIdx;
+        }
+      }
+    });
+  });
 
   el.monthGrid.innerHTML = '';
-  for (let i = 0; i < 42; i++) {
-    const day = addDays(gridStart, i);
-    const inMonth = day.getMonth() === state.cursor.getMonth();
-    const dayEvents = eventsOnDate(day);
+  for (let row = 0; row < 6; row++) {
+    const rowDays = days.slice(row*7, row*7+7);
+    const rowSegments = segmentsByRow[row];
+    const laneCount = Math.max(assignLanes(rowSegments), 1);
 
-    const cell = document.createElement('div');
-    cell.className = 'day-cell' + (inMonth ? '' : ' other-month') + (isSameDay(day, today) ? ' is-today' : '');
+    const rowEl = document.createElement('div');
+    rowEl.className = 'month-row';
+    rowEl.style.gridTemplateRows = `22px repeat(${laneCount}, 20px) 6px`;
 
-    const num = document.createElement('div');
-    num.className = 'day-num';
-    num.textContent = day.getDate();
-    cell.appendChild(num);
-
-    const list = document.createElement('div');
-    list.className = 'day-events';
-    dayEvents.forEach(ev => list.appendChild(makePill(ev)));
-    cell.appendChild(list);
-
-    cell.addEventListener('click', (e) => {
-      if (e.target.closest('.event-pill')) return;
-      openModal(null, day);
+    rowDays.forEach((day, col) => {
+      const inMonth = day.getMonth() === state.cursor.getMonth();
+      const bg = document.createElement('div');
+      bg.className = 'daycell-bg' + (inMonth ? '' : ' other-month');
+      bg.style.gridColumn = `${col+1} / span 1`;
+      bg.style.gridRow = `1 / -1`;
+      bg.addEventListener('click', () => openModal(null, day));
+      rowEl.appendChild(bg);
     });
 
-    el.monthGrid.appendChild(cell);
+    rowDays.forEach((day, col) => {
+      const inMonth = day.getMonth() === state.cursor.getMonth();
+      const num = document.createElement('div');
+      num.className = 'day-num' + (inMonth ? '' : ' other-month');
+      num.style.gridColumn = `${col+1} / span 1`;
+      num.style.gridRow = '1';
+      num.innerHTML = isSameDay(day, today) ? `<span class="today-badge">${day.getDate()}</span>` : day.getDate();
+      rowEl.appendChild(num);
+    });
+
+    rowSegments.forEach(seg => {
+      const bar = document.createElement('div');
+      bar.className = 'month-bar';
+      bar.style.gridColumn = `${seg.colStart+1} / span ${seg.colSpan}`;
+      bar.style.gridRow = `${seg.lane + 2}`;
+      bar.style.background = seg.event.color || categoryColor(seg.event.category);
+      bar.textContent = seg.event.title;
+      bar.title = pillTooltip(seg.event);
+      bar.addEventListener('click', (e) => { e.stopPropagation(); openModal(seg.event); });
+      rowEl.appendChild(bar);
+    });
+
+    el.monthGrid.appendChild(rowEl);
   }
 }
 
-function makePill(ev) {
-  const pill = document.createElement('div');
-  pill.className = 'event-pill';
-  pill.style.background = ev.color || categoryColor(ev.category);
-  pill.textContent = ev.title;
-  pill.title = pillTooltip(ev);
-  pill.addEventListener('click', (e) => { e.stopPropagation(); openModal(ev); });
-  return pill;
+function eventDates(ev) {
+  return (ev.dates && ev.dates.length) ? ev.dates : (ev.date ? [ev.date] : []);
+}
+
+function groupConsecutiveDates(sortedDates) {
+  const runs = [];
+  let current = [sortedDates[0]];
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prev = new Date(sortedDates[i-1] + 'T00:00:00');
+    const cur = new Date(sortedDates[i] + 'T00:00:00');
+    const diff = Math.round((cur - prev) / 86400000);
+    if (diff === 1) {
+      current.push(sortedDates[i]);
+    } else {
+      runs.push(current);
+      current = [sortedDates[i]];
+    }
+  }
+  runs.push(current);
+  return runs;
+}
+
+// Packs segments into the minimum number of stacked "lanes" so overlapping
+// date ranges don't visually collide, like multi-day events in most
+// calendar UIs. Mutates each segment with a .lane index; returns lane count.
+function assignLanes(segments) {
+  segments.sort((a,b) => a.colStart - b.colStart || b.colSpan - a.colSpan);
+  const lanes = [];
+  segments.forEach(seg => {
+    const colEnd = seg.colStart + seg.colSpan - 1;
+    let lane = lanes.findIndex(items => !items.some(it => !(colEnd < it.colStart || seg.colStart > it.colEnd)));
+    if (lane === -1) {
+      lanes.push([]);
+      lane = lanes.length - 1;
+    }
+    lanes[lane].push({ colStart: seg.colStart, colEnd });
+    seg.lane = lane;
+  });
+  return lanes.length;
 }
 
 function formatPeople(people) {
