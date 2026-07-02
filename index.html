@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Office Ledger — Team Calendar</title>
+<title>STOD CALENDAR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,8 +17,7 @@
   <aside class="sidebar">
     <div class="sidebar-head">
       <div class="stamp">TEAM</div>
-      <h1>Office Ledger</h1>
-      <p class="tagline">shared desk calendar</p>
+      <h1>STOD CALENDAR</h1>
     </div>
 
     <nav class="view-tabs" aria-label="Calendar views">
@@ -94,11 +93,13 @@
       <input type="text" id="eventTitle" required placeholder="e.g. Client call, Leave, Deadline">
     </label>
 
-    <div class="field-row">
-      <label class="field">
-        <span>Date</span>
-        <input type="date" id="eventDate" required>
-      </label>
+    <div class="field">
+      <span>Dates</span>
+      <div class="date-add-row">
+        <input type="date" id="dateInput">
+        <button type="button" id="addDateBtn" class="btn-ghost">+ Add date</button>
+      </div>
+      <div class="date-chips" id="dateChips"></div>
     </div>
 
     <label class="field">
