@@ -22,6 +22,8 @@ let state = {
   editingId: null,
 };
 
+let modalDates = []; // array of 'YYYY-MM-DD' strings for the entry currently open in the modal
+
 function categoryColor(key) {
   const c = CATEGORIES.find(c => c.key === key);
   return c ? c.color : '#5B5E72';
@@ -65,7 +67,9 @@ const el = {
   deleteBtn: document.getElementById('deleteBtn'),
   eventId: document.getElementById('eventId'),
   eventTitle: document.getElementById('eventTitle'),
-  eventDate: document.getElementById('eventDate'),
+  dateInput: document.getElementById('dateInput'),
+  addDateBtn: document.getElementById('addDateBtn'),
+  dateChips: document.getElementById('dateChips'),
   eventPeople: document.getElementById('eventPeople'),
   eventCategory: document.getElementById('eventCategory'),
   categoryColorDot: document.getElementById('categoryColorDot'),
@@ -244,7 +248,7 @@ function pillTooltip(ev) {
 
 function eventsOnDate(day) {
   const key = toDateKey(day);
-  return state.events.filter(e => e.date === key);
+  return state.events.filter(e => (e.dates && e.dates.includes(key)) || e.date === key);
 }
 
 function renderWeek() {
@@ -325,16 +329,66 @@ function bindModal() {
   el.cancelBtn.addEventListener('click', closeModal);
   el.modalBackdrop.addEventListener('click', (e) => { if (e.target === el.modalBackdrop) closeModal(); });
 
+  el.addDateBtn.addEventListener('click', addDateFromInput);
+
   // Enter should never submit the form. Inside the People textarea, let it
-  // do its normal job of adding a new line.
+  // do its normal job of adding a new line. Inside the date input, treat
+  // Enter as "add this date" instead of submitting.
   el.eventForm.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+    if (e.key !== 'Enter') return;
+    if (e.target === el.dateInput) {
+      e.preventDefault();
+      addDateFromInput();
+      return;
+    }
+    if (e.target.tagName !== 'TEXTAREA') {
       e.preventDefault();
     }
   });
 
   el.eventForm.addEventListener('submit', onSaveEvent);
   el.deleteBtn.addEventListener('click', onDeleteEvent);
+}
+
+function addDateFromInput() {
+  const val = el.dateInput.value;
+  if (!val) return;
+  if (!modalDates.includes(val)) {
+    modalDates.push(val);
+    modalDates.sort();
+    renderDateChips();
+  }
+  el.dateInput.value = '';
+}
+
+function removeDate(dateKey) {
+  modalDates = modalDates.filter(d => d !== dateKey);
+  renderDateChips();
+}
+
+function renderDateChips() {
+  el.dateChips.innerHTML = '';
+  if (modalDates.length === 0) {
+    el.dateChips.innerHTML = '<span class="date-chips-empty">No dates added yet — pick a date above and click "+ Add date".</span>';
+    return;
+  }
+  modalDates.forEach(d => {
+    const chip = document.createElement('span');
+    chip.className = 'date-chip';
+    chip.textContent = formatDateChip(d);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', 'Remove date');
+    removeBtn.addEventListener('click', () => removeDate(d));
+    chip.appendChild(removeBtn);
+    el.dateChips.appendChild(chip);
+  });
+}
+
+function formatDateChip(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return `${MONTHS[m-1].slice(0,3)} ${d}, ${y}`;
 }
 
 function openModal(ev, defaultDate) {
@@ -344,7 +398,7 @@ function openModal(ev, defaultDate) {
     el.modalTitle.textContent = 'Edit Entry';
     el.eventId.value = ev.id;
     el.eventTitle.value = ev.title || '';
-    el.eventDate.value = ev.date || '';
+    modalDates = ev.dates && ev.dates.length ? [...ev.dates] : (ev.date ? [ev.date] : []);
     el.eventPeople.value = ev.people || '';
     el.eventCategory.value = ev.category || '';
     el.deleteBtn.hidden = false;
@@ -354,10 +408,12 @@ function openModal(ev, defaultDate) {
     el.eventForm.reset();
     el.eventId.value = '';
     const d = defaultDate || new Date();
-    el.eventDate.value = toDateKey(d);
+    modalDates = [toDateKey(d)];
     el.eventCategory.value = '';
     el.deleteBtn.hidden = true;
   }
+  el.dateInput.value = toDateKey(new Date());
+  renderDateChips();
   updateCategoryDot();
   el.modalBackdrop.hidden = false;
   el.eventTitle.focus();
@@ -376,10 +432,15 @@ async function onSaveEvent(e) {
     el.modalError.hidden = false;
     return;
   }
+  if (modalDates.length === 0) {
+    el.modalError.textContent = 'Please add at least one date.';
+    el.modalError.hidden = false;
+    return;
+  }
 
   const payload = {
     title: el.eventTitle.value.trim(),
-    date: el.eventDate.value,
+    dates: [...modalDates].sort(),
     people: el.eventPeople.value.trim(),
     category: el.eventCategory.value,
     color: categoryColor(el.eventCategory.value),
