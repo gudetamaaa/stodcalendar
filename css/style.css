@@ -539,6 +539,50 @@ fieldset.field { border: none; padding: 0; margin: 0; }
   transition: background 0.15s ease;
 }
 
+.date-add-row {
+  display: flex;
+  gap: 8px;
+}
+.date-add-row input { flex: 1; }
+.date-add-row .btn-ghost {
+  padding: 9px 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.date-chip {
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px 4px 12px;
+  font-size: 12px;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.date-chip button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.date-chip button:hover { color: var(--stamp); }
+.date-chips-empty {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
 .modal-actions {
   display: flex;
   align-items: center;
