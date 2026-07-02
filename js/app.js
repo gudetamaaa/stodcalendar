@@ -204,14 +204,7 @@ function renderMonth() {
 
     const list = document.createElement('div');
     list.className = 'day-events';
-    const visible = dayEvents.slice(0, 3);
-    visible.forEach(ev => list.appendChild(makePill(ev)));
-    if (dayEvents.length > 3) {
-      const more = document.createElement('div');
-      more.className = 'event-more';
-      more.textContent = `+${dayEvents.length - 3} more`;
-      list.appendChild(more);
-    }
+    dayEvents.forEach(ev => list.appendChild(makePill(ev)));
     cell.appendChild(list);
 
     cell.addEventListener('click', (e) => {
