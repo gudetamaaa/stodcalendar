@@ -53,6 +53,8 @@ const el = {
   currentLabel: document.getElementById('currentLabel'),
   prevBtn: document.getElementById('prevBtn'),
   nextBtn: document.getElementById('nextBtn'),
+  jumpDateBtn: document.getElementById('jumpDateBtn'),
+  jumpDateInput: document.getElementById('jumpDateInput'),
   todayBtn: document.getElementById('todayBtn'),
   newEventBtn: document.getElementById('newEventBtn'),
   legendList: document.getElementById('legendList'),
@@ -124,6 +126,20 @@ function bindNav() {
   el.nextBtn.addEventListener('click', () => step(1));
   el.todayBtn.addEventListener('click', () => { state.cursor = startOfDay(new Date()); render(); });
   el.newEventBtn.addEventListener('click', () => openModal(null, state.cursor));
+
+  el.jumpDateBtn.addEventListener('click', () => {
+    el.jumpDateInput.value = toDateKey(state.cursor);
+    if (typeof el.jumpDateInput.showPicker === 'function') {
+      try { el.jumpDateInput.showPicker(); return; } catch (e) { /* fall through */ }
+    }
+    el.jumpDateInput.focus();
+    el.jumpDateInput.click();
+  });
+  el.jumpDateInput.addEventListener('change', () => {
+    if (!el.jumpDateInput.value) return;
+    state.cursor = new Date(el.jumpDateInput.value + 'T00:00:00');
+    render();
+  });
 }
 
 function step(dir) {
