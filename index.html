@@ -32,6 +32,9 @@
       <button class="tab" data-view="day">
         <span class="tab-index">03</span> Daily
       </button>
+      <button class="tab" data-view="people">
+        <span class="tab-index">04</span> People
+      </button>
     </nav>
 
     <button class="new-entry-btn" id="newEventBtn">+ New Entry</button>
@@ -47,7 +50,7 @@
 
     <div class="legend-panel">
       <div class="legend-head">
-        <span class="tab-index">04</span> Legend
+        <span class="tab-index">05</span> Legend
       </div>
       <ul id="legendList" class="legend-list">
         <li class="legend-empty">No categories defined yet — colors will list here as entries are added.</li>
@@ -78,6 +81,17 @@
     <section class="view" id="dayView" hidden>
       <div class="day-grid" id="dayGrid"></div>
     </section>
+
+    <section class="view" id="peopleView" hidden>
+      <div class="people-view-head">
+        <h2>People</h2>
+        <div class="add-person-row">
+          <input type="text" id="newPersonInput" placeholder="Add a person's name">
+          <button type="button" id="addPersonBtn" class="btn-primary">+ Add</button>
+        </div>
+      </div>
+      <div class="people-list" id="peopleList"></div>
+    </section>
   </main>
 </div>
 
@@ -85,7 +99,7 @@
 <div class="modal-backdrop" id="modalBackdrop" hidden>
   <form class="modal" id="eventForm">
     <div class="modal-head">
-      <span class="tab-index">05</span>
+      <span class="tab-index">06</span>
       <h2 id="modalTitle">New Entry</h2>
       <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
     </div>
@@ -106,10 +120,17 @@
       <div class="date-chips" id="dateChips"></div>
     </div>
 
-    <label class="field">
+    <div class="field">
       <span>People</span>
-      <textarea id="eventPeople" rows="3" placeholder="Type a name, press Enter for the next person"></textarea>
-    </label>
+      <div class="people-select" id="peopleSelect">
+        <button type="button" class="people-select-btn" id="peopleSelectBtn">Select people…</button>
+        <div class="people-dropdown" id="peopleDropdown" hidden>
+          <input type="text" id="peopleSearchInput" class="people-search-input" placeholder="Search people…">
+          <div class="people-checklist" id="peopleChecklist"></div>
+        </div>
+      </div>
+      <div class="people-chips" id="peopleChips"></div>
+    </div>
 
     <label class="field">
       <span>Category</span>
@@ -130,6 +151,23 @@
     </div>
     <p class="modal-error" id="modalError" hidden></p>
   </form>
+</div>
+
+<!-- ===== PERSON DAY POPUP ===== -->
+<div class="modal-backdrop" id="personModalBackdrop" hidden>
+  <div class="modal person-modal">
+    <div class="modal-head">
+      <span class="tab-index">07</span>
+      <h2 id="personModalName">—</h2>
+      <button type="button" class="modal-close" id="personModalClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="person-day-nav">
+      <button type="button" id="personPrevDay" aria-label="Previous day">&larr;</button>
+      <div id="personDayLabel" class="current-label">—</div>
+      <button type="button" id="personNextDay" aria-label="Next day">&rarr;</button>
+    </div>
+    <div class="person-entries" id="personEntries"></div>
+  </div>
 </div>
 
 <!-- Firebase (compat build — no bundler needed) -->
