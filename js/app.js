@@ -135,13 +135,21 @@ function step(dir) {
 
 function subscribeToEvents() {
   el.connectionBanner.hidden = false;
+  el.connectionBanner.textContent = 'Connecting to shared calendar…';
+
+  const slowTimer = setTimeout(() => {
+    el.connectionBanner.textContent = 'Still connecting… this can take longer on some office/school networks. If this doesn\u2019t clear in ~15s, try a different network (e.g. mobile hotspot) or check with whoever manages your network.';
+  }, 6000);
+
   db.collection('events').onSnapshot(
     snap => {
+      clearTimeout(slowTimer);
       el.connectionBanner.hidden = true;
       state.events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       render();
     },
     err => {
+      clearTimeout(slowTimer);
       el.connectionBanner.hidden = false;
       el.connectionBanner.textContent = 'Could not connect to the shared calendar — check js/firebase-config.js';
       console.error(err);
