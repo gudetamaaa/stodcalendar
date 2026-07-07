@@ -19,10 +19,15 @@ let state = {
   view: 'month',
   cursor: startOfDay(new Date()),
   events: [],
+  people: [],
   editingId: null,
 };
 
-let modalDates = []; // array of 'YYYY-MM-DD' strings for the entry currently open in the modal
+let modalDates = [];  // array of 'YYYY-MM-DD' strings for the entry currently open in the modal
+let modalPeople = []; // array of selected person names for the entry currently open in the modal
+
+let personModalName = null;
+let personModalDate = startOfDay(new Date());
 
 function categoryColor(key) {
   const c = CATEGORIES.find(c => c.key === key);
@@ -43,9 +48,18 @@ function toDateKey(d) {
 }
 function startOfWeek(d) { return addDays(startOfDay(d), -d.getDay()); }
 
+// Returns an entry's people as a clean array, whether it was saved in the
+// new array format or the old newline-separated string format.
+function peopleArray(people) {
+  if (!people) return [];
+  if (Array.isArray(people)) return people.filter(Boolean);
+  return people.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
 const el = {
   tabs: document.querySelectorAll('.tab'),
-  views: { month: document.getElementById('monthView'), week: document.getElementById('weekView'), day: document.getElementById('dayView') },
+  views: { month: document.getElementById('monthView'), week: document.getElementById('weekView'), day: document.getElementById('dayView'), people: document.getElementById('peopleView') },
+  miniNav: document.querySelector('.mini-nav'),
   monthWeekdayRow: document.getElementById('monthWeekdayRow'),
   monthGrid: document.getElementById('monthGrid'),
   weekGrid: document.getElementById('weekGrid'),
@@ -61,6 +75,10 @@ const el = {
   authorName: document.getElementById('authorName'),
   connectionBanner: document.getElementById('connectionBanner'),
 
+  peopleList: document.getElementById('peopleList'),
+  newPersonInput: document.getElementById('newPersonInput'),
+  addPersonBtn: document.getElementById('addPersonBtn'),
+
   modalBackdrop: document.getElementById('modalBackdrop'),
   eventForm: document.getElementById('eventForm'),
   modalTitle: document.getElementById('modalTitle'),
@@ -72,10 +90,23 @@ const el = {
   dateInput: document.getElementById('dateInput'),
   addDateBtn: document.getElementById('addDateBtn'),
   dateChips: document.getElementById('dateChips'),
-  eventPeople: document.getElementById('eventPeople'),
+  peopleSelect: document.getElementById('peopleSelect'),
+  peopleSelectBtn: document.getElementById('peopleSelectBtn'),
+  peopleDropdown: document.getElementById('peopleDropdown'),
+  peopleSearchInput: document.getElementById('peopleSearchInput'),
+  peopleChecklist: document.getElementById('peopleChecklist'),
+  peopleChips: document.getElementById('peopleChips'),
   eventCategory: document.getElementById('eventCategory'),
   categoryColorDot: document.getElementById('categoryColorDot'),
   modalError: document.getElementById('modalError'),
+
+  personModalBackdrop: document.getElementById('personModalBackdrop'),
+  personModalName: document.getElementById('personModalName'),
+  personModalClose: document.getElementById('personModalClose'),
+  personDayLabel: document.getElementById('personDayLabel'),
+  personPrevDay: document.getElementById('personPrevDay'),
+  personNextDay: document.getElementById('personNextDay'),
+  personEntries: document.getElementById('personEntries'),
 };
 
 function init() {
@@ -83,7 +114,10 @@ function init() {
   buildCategoryDropdown();
   bindNav();
   bindModal();
+  bindPeopleTab();
+  bindPersonModal();
   subscribeToEvents();
+  subscribeToPeople();
   render();
 }
 
@@ -118,6 +152,11 @@ function bindNav() {
       state.view = tab.dataset.view;
       Object.values(el.views).forEach(v => v.hidden = true);
       el.views[state.view].hidden = false;
+
+      const isPeopleView = state.view === 'people';
+      el.miniNav.hidden = isPeopleView;
+      el.todayBtn.hidden = isPeopleView;
+
       render();
     });
   });
@@ -173,7 +212,23 @@ function subscribeToEvents() {
   );
 }
 
+function subscribeToPeople() {
+  db.collection('people').orderBy('name').onSnapshot(
+    snap => {
+      state.people = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (state.view === 'people') renderPeopleList();
+      if (!el.modalBackdrop.hidden) renderPeopleChecklist(el.peopleSearchInput.value);
+      if (!el.personModalBackdrop.hidden) renderPersonModal();
+    },
+    err => console.error('People sync error:', err)
+  );
+}
+
 function render() {
+  if (state.view === 'people') {
+    renderPeopleList();
+    return;
+  }
   renderLabel();
   renderLegend();
   if (state.view === 'month') renderMonth();
@@ -331,8 +386,7 @@ function assignLanes(segments) {
 }
 
 function formatPeople(people) {
-  if (!people) return '';
-  return people.split('\n').map(s => s.trim()).filter(Boolean).join(', ');
+  return peopleArray(people).join(', ');
 }
 
 function pillTooltip(ev) {
@@ -444,6 +498,72 @@ function makeEntryCard(ev) {
   return card;
 }
 
+function bindPeopleTab() {
+  el.addPersonBtn.addEventListener('click', addPerson);
+  el.newPersonInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addPerson();
+    }
+  });
+}
+
+async function addPerson() {
+  const name = el.newPersonInput.value.trim();
+  if (!name) return;
+  const exists = state.people.some(p => p.name.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    el.newPersonInput.value = '';
+    return;
+  }
+  try {
+    await db.collection('people').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    el.newPersonInput.value = '';
+    el.newPersonInput.focus();
+  } catch (err) {
+    console.error(err);
+    alert('Could not add person — check your connection.');
+  }
+}
+
+async function removePerson(id, name) {
+  if (!confirm(`Remove "${name}" from the people list? This won't affect any existing calendar entries.`)) return;
+  try {
+    await db.collection('people').doc(id).delete();
+  } catch (err) {
+    console.error(err);
+    alert('Could not remove person — check your connection.');
+  }
+}
+
+function renderPeopleList() {
+  el.peopleList.innerHTML = '';
+  if (state.people.length === 0) {
+    el.peopleList.innerHTML = '<div class="people-list-empty">No people added yet. Use the field above to add your first officemate.</div>';
+    return;
+  }
+  state.people.forEach(person => {
+    const row = document.createElement('div');
+    row.className = 'person-row';
+
+    const name = document.createElement('span');
+    name.className = 'person-row-name';
+    name.textContent = person.name;
+    row.appendChild(name);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'person-row-remove';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', `Remove ${person.name}`);
+    removeBtn.addEventListener('click', (e) => { e.stopPropagation(); removePerson(person.id, person.name); });
+    row.appendChild(removeBtn);
+
+    row.addEventListener('click', () => openPersonModal(person.name));
+    el.peopleList.appendChild(row);
+  });
+}
+
 function bindModal() {
   el.newEventBtn.addEventListener('click', () => openModal(null, state.cursor));
   el.modalClose.addEventListener('click', closeModal);
@@ -451,6 +571,35 @@ function bindModal() {
   el.modalBackdrop.addEventListener('click', (e) => { if (e.target === el.modalBackdrop) closeModal(); });
 
   el.addDateBtn.addEventListener('click', addDateFromInput);
+
+  el.peopleSelectBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !el.peopleDropdown.hidden;
+    if (isOpen) {
+      el.peopleDropdown.hidden = true;
+    } else {
+      el.peopleSearchInput.value = '';
+      renderPeopleChecklist('');
+      el.peopleDropdown.hidden = false;
+      el.peopleSearchInput.focus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!el.peopleDropdown.hidden && !el.peopleSelect.contains(e.target)) {
+      el.peopleDropdown.hidden = true;
+    }
+  });
+  el.peopleSearchInput.addEventListener('input', () => renderPeopleChecklist(el.peopleSearchInput.value));
+  el.peopleChecklist.addEventListener('change', (e) => {
+    if (e.target.type !== 'checkbox') return;
+    const name = e.target.value;
+    if (e.target.checked) {
+      if (!modalPeople.includes(name)) modalPeople.push(name);
+    } else {
+      modalPeople = modalPeople.filter(p => p !== name);
+    }
+    renderPeopleChips();
+  });
 
   // Enter should never submit the form. Inside the People textarea, let it
   // do its normal job of adding a new line. Inside the date input, treat
@@ -512,6 +661,58 @@ function formatDateChip(dateKey) {
   return `${MONTHS[m-1].slice(0,3)} ${d}, ${y}`;
 }
 
+function renderPeopleChecklist(filterText) {
+  const filter = (filterText || '').trim().toLowerCase();
+  el.peopleChecklist.innerHTML = '';
+
+  if (state.people.length === 0) {
+    el.peopleChecklist.innerHTML = '<div class="people-checklist-empty">No people added yet — add some in the People tab first.</div>';
+    return;
+  }
+
+  const filtered = state.people.filter(p => p.name.toLowerCase().includes(filter));
+  if (filtered.length === 0) {
+    el.peopleChecklist.innerHTML = '<div class="people-checklist-empty">No matches.</div>';
+    return;
+  }
+
+  filtered.forEach(person => {
+    const row = document.createElement('label');
+    row.className = 'people-check-row';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = person.name;
+    checkbox.checked = modalPeople.includes(person.name);
+    row.appendChild(checkbox);
+    row.appendChild(document.createTextNode(person.name));
+    el.peopleChecklist.appendChild(row);
+  });
+}
+
+function renderPeopleChips() {
+  el.peopleChips.innerHTML = '';
+  modalPeople.slice().sort().forEach(name => {
+    const chip = document.createElement('span');
+    chip.className = 'date-chip';
+    chip.textContent = name;
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', `Remove ${name}`);
+    removeBtn.addEventListener('click', () => {
+      modalPeople = modalPeople.filter(p => p !== name);
+      renderPeopleChips();
+      renderPeopleChecklist(el.peopleSearchInput.value);
+    });
+    chip.appendChild(removeBtn);
+    el.peopleChips.appendChild(chip);
+  });
+  el.peopleSelectBtn.textContent = modalPeople.length === 0
+    ? 'Select people…'
+    : `${modalPeople.length} selected`;
+  el.peopleSelectBtn.classList.toggle('has-selection', modalPeople.length > 0);
+}
+
 function openModal(ev, defaultDate) {
   el.modalError.hidden = true;
   if (ev) {
@@ -520,7 +721,7 @@ function openModal(ev, defaultDate) {
     el.eventId.value = ev.id;
     el.eventTitle.value = ev.title || '';
     modalDates = ev.dates && ev.dates.length ? [...ev.dates] : (ev.date ? [ev.date] : []);
-    el.eventPeople.value = ev.people || '';
+    modalPeople = peopleArray(ev.people);
     el.eventCategory.value = ev.category || '';
     el.deleteBtn.hidden = false;
   } else {
@@ -530,11 +731,14 @@ function openModal(ev, defaultDate) {
     el.eventId.value = '';
     const d = defaultDate || new Date();
     modalDates = [toDateKey(d)];
+    modalPeople = [];
     el.eventCategory.value = '';
     el.deleteBtn.hidden = true;
   }
   el.dateInput.value = toDateKey(new Date());
   renderDateChips();
+  el.peopleDropdown.hidden = true;
+  renderPeopleChips();
   updateCategoryDot();
   el.modalBackdrop.hidden = false;
   el.eventTitle.focus();
@@ -562,7 +766,7 @@ async function onSaveEvent(e) {
   const payload = {
     title: el.eventTitle.value.trim(),
     dates: [...modalDates].sort(),
-    people: el.eventPeople.value.trim(),
+    people: [...modalPeople].sort(),
     category: el.eventCategory.value,
     color: categoryColor(el.eventCategory.value),
     author: el.authorName.value.trim() || 'Anonymous',
@@ -595,6 +799,56 @@ async function onDeleteEvent() {
     el.modalError.textContent = 'Could not delete — check your connection.';
     el.modalError.hidden = false;
   }
+}
+
+function bindPersonModal() {
+  el.personModalClose.addEventListener('click', closePersonModal);
+  el.personModalBackdrop.addEventListener('click', (e) => { if (e.target === el.personModalBackdrop) closePersonModal(); });
+  el.personPrevDay.addEventListener('click', () => { personModalDate = addDays(personModalDate, -1); renderPersonModal(); });
+  el.personNextDay.addEventListener('click', () => { personModalDate = addDays(personModalDate, 1); renderPersonModal(); });
+}
+
+function openPersonModal(name) {
+  personModalName = name;
+  personModalDate = startOfDay(new Date());
+  renderPersonModal();
+  el.personModalBackdrop.hidden = false;
+}
+
+function closePersonModal() {
+  el.personModalBackdrop.hidden = true;
+}
+
+function renderPersonModal() {
+  el.personModalName.textContent = personModalName;
+  el.personDayLabel.textContent = `${WEEKDAYS_SHORT[personModalDate.getDay()]}, ${MONTHS[personModalDate.getMonth()].slice(0,3)} ${personModalDate.getDate()}, ${personModalDate.getFullYear()}`;
+
+  const key = toDateKey(personModalDate);
+  const nameLower = personModalName.toLowerCase();
+  const matches = state.events.filter(ev =>
+    eventDates(ev).includes(key) &&
+    peopleArray(ev.people).some(p => p.toLowerCase() === nameLower)
+  );
+
+  el.personEntries.innerHTML = '';
+  if (matches.length === 0) {
+    el.personEntries.innerHTML = '<div class="person-entries-empty">No entries for this person on this day.</div>';
+    return;
+  }
+
+  matches.forEach(ev => {
+    const card = document.createElement('div');
+    card.className = 'entry-card';
+    card.style.background = ev.color || categoryColor(ev.category);
+    const others = peopleArray(ev.people).filter(p => p.toLowerCase() !== nameLower);
+    card.innerHTML = `<div class="ec-title">${escapeHtml(ev.title)}</div>
+      <div class="ec-people">${escapeHtml(categoryLabel(ev.category))}${others.length ? ' · with ' + escapeHtml(others.join(', ')) : ''}</div>`;
+    card.addEventListener('click', () => {
+      closePersonModal();
+      openModal(ev);
+    });
+    el.personEntries.appendChild(card);
+  });
 }
 
 function escapeHtml(str) {
