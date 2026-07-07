@@ -299,6 +299,16 @@ button, input, textarea, select { font-family: inherit; }
 
 .view { width: 100%; }
 
+.grid-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.grid-scroll > .weekday-row,
+.grid-scroll > .month-grid,
+.grid-scroll > .week-grid {
+  min-width: 640px;
+}
+
 /* ---- Month view ---- */
 
 .weekday-row {
@@ -673,6 +683,7 @@ fieldset.field { border: none; padding: 0; margin: 0; }
 .add-person-row {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .add-person-row input {
   border: 1px solid var(--line);
@@ -680,7 +691,8 @@ fieldset.field { border: none; padding: 0; margin: 0; }
   padding: 8px 10px;
   font-size: 13px;
   background: var(--card);
-  min-width: 200px;
+  flex: 1;
+  min-width: 140px;
 }
 .add-person-row input:focus {
   outline: 2px solid var(--sage);
@@ -864,15 +876,38 @@ fieldset.field { border: none; padding: 0; margin: 0; }
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    padding: 16px;
+    padding: 12px 16px;
+    gap: 10px;
   }
-  .sidebar-head, .legend-panel, .sidebar-foot { display: none; }
-  .view-tabs { flex-direction: row; flex: 1; }
-  .tab { justify-content: center; border-bottom: none; border-right: 1px solid var(--line); }
+  .sidebar-head, .legend-panel { display: none; }
+
+  .view-tabs { flex-direction: row; flex-basis: 100%; order: 1; }
+  .tab {
+    flex: 1;
+    justify-content: center;
+    border-bottom: none;
+    border-right: 1px solid var(--line);
+    padding: 10px 4px;
+    font-size: 12px;
+  }
   .tab:last-child { border-right: none; }
-  .mini-nav { order: 3; width: 100%; }
+  .tab-index { display: none; }
+
+  .new-entry-btn { flex: 1 1 auto; order: 2; }
+  .today-btn { order: 2; flex-shrink: 0; margin-top: 0; }
+  .mini-nav { order: 3; flex-basis: 100%; }
+  .sidebar-foot { flex-basis: 100%; order: 4; display: flex; }
+
   .main { padding: 16px; }
-  .month-grid { grid-auto-rows: minmax(72px, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .modal-backdrop { padding: 10px; }
+  .modal { padding: 18px 16px 16px; max-height: 92vh; }
+  .date-add-row { flex-wrap: wrap; }
+  .date-add-row input { min-width: 0; flex: 1 1 140px; }
+  .category-select-row { flex-wrap: wrap; }
+  .field-row { flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {
