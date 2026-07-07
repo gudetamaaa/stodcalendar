@@ -22,3 +22,8 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+db.settings({
+  experimentalForceLongPolling: true,
+  useFetchStreams: false,
+});
