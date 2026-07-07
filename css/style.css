@@ -150,6 +150,7 @@ button, input, textarea, select { font-family: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  position: relative;
 }
 .mini-nav button {
   width: 30px;
@@ -160,8 +161,23 @@ button, input, textarea, select { font-family: inherit; }
   color: var(--ink);
   cursor: pointer;
   font-size: 14px;
+  flex-shrink: 0;
 }
 .mini-nav button:hover { border-color: var(--ink-soft); }
+
+.jump-date-btn {
+  font-size: 13px !important;
+}
+
+.jump-date-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  right: 30px;
+  bottom: 0;
+}
 
 .current-label {
   font-family: var(--mono);
