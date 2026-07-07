@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
 
@@ -17,8 +18,8 @@
   <aside class="sidebar">
     <div class="sidebar-head">
       <div class="stamp">TEAM</div>
-      <h1>STOD CALENDAR</h1>
-      <p class="tagline">Activities</p>
+      <h1>STOD Calendar</h1>
+      <p class="tagline">Monthly Activities</p>
     </div>
 
     <nav class="view-tabs" aria-label="Calendar views">
@@ -39,6 +40,8 @@
       <button id="prevBtn" aria-label="Previous">&larr;</button>
       <div id="currentLabel" class="current-label">—</div>
       <button id="nextBtn" aria-label="Next">&rarr;</button>
+      <button id="jumpDateBtn" class="jump-date-btn" aria-label="Jump to date" title="Jump to a specific date">&#128197;</button>
+      <input type="date" id="jumpDateInput" class="jump-date-input">
     </div>
     <button class="today-btn" id="todayBtn">Jump to today</button>
 
