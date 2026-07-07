@@ -26,4 +26,5 @@ const db = firebase.firestore();
 db.settings({
   experimentalForceLongPolling: true,
   useFetchStreams: false,
+  merge: true,
 });
