@@ -76,6 +76,7 @@ const el = {
   connectionBanner: document.getElementById('connectionBanner'),
 
   peopleList: document.getElementById('peopleList'),
+  peopleListSearch: document.getElementById('peopleListSearch'),
   newPersonInput: document.getElementById('newPersonInput'),
   addPersonBtn: document.getElementById('addPersonBtn'),
 
@@ -506,6 +507,7 @@ function bindPeopleTab() {
       addPerson();
     }
   });
+  el.peopleListSearch.addEventListener('input', renderPeopleList);
 }
 
 async function addPerson() {
@@ -537,12 +539,23 @@ async function removePerson(id, name) {
 }
 
 function renderPeopleList() {
+  const filter = (el.peopleListSearch.value || '').trim().toLowerCase();
+  const visible = filter
+    ? state.people.filter(p => p.name.toLowerCase().includes(filter))
+    : state.people;
+
   el.peopleList.innerHTML = '';
+
   if (state.people.length === 0) {
     el.peopleList.innerHTML = '<div class="people-list-empty">No people added yet. Use the field above to add your first officemate.</div>';
     return;
   }
-  state.people.forEach(person => {
+  if (visible.length === 0) {
+    el.peopleList.innerHTML = '<div class="people-list-empty">No matches for that search.</div>';
+    return;
+  }
+
+  visible.forEach(person => {
     const row = document.createElement('div');
     row.className = 'person-row';
 
